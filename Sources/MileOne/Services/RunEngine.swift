@@ -46,6 +46,9 @@ public final class RunEngine {
     /// Callback fired when the run completes. Receives (totalElapsed, totalDistance, gpsPoints).
     public var onRunComplete: ((TimeInterval, Double, [CLLocation]) -> Void)?
 
+    /// Callback fired whenever run state changes. Delivers an immutable snapshot for the view layer.
+    public var onSnapshot: ((RunSnapshot) -> Void)?
+
     /// Number of active display timers (0 or 1). Exposed for test verification.
     public var activeTimerCount: Int {
         displayTimer != nil ? 1 : 0
@@ -138,6 +141,8 @@ public final class RunEngine {
         if let first = currentInterval {
             audioCoach.speak(audioCue(for: first.type, isCompletion: false))
         }
+
+        publishSnapshot()
     }
 
     /// Pause the run. Stops GPS and display timer, records pause start time.
@@ -160,6 +165,8 @@ public final class RunEngine {
 
         cancelDisplayTimer()
         locationProvider.stopUpdatingLocation()
+
+        publishSnapshot()
     }
 
     /// Resume a paused run. Restarts GPS and display timer.
@@ -173,6 +180,8 @@ public final class RunEngine {
 
         locationProvider.startUpdatingLocation()
         startDisplayTimer()
+
+        publishSnapshot()
     }
 
     /// Skip to the next interval. Guards against double-completion.
@@ -188,6 +197,7 @@ public final class RunEngine {
         isComplete = true
         audioCoach.speak("Congratulations! You've completed your run.")
         RunCheckpoint.clear()
+        publishSnapshot()
         onRunComplete?(totalElapsed, totalDistance, gpsPoints)
     }
 
@@ -205,6 +215,8 @@ public final class RunEngine {
         if let lastGPS = lastGPSTimestamp, now.timeIntervalSince(lastGPS) > 3 {
             refreshDisplayWithTimestamp(now)
         }
+
+        publishSnapshot()
     }
 
     /// Fallback refresh using a specific timestamp. This CAN advance intervals
@@ -213,6 +225,8 @@ public final class RunEngine {
         guard isRunning, !isPaused, !isComplete else { return }
         updateElapsedTime(at: timestamp)
         checkIntervalCompletion()
+
+        publishSnapshot()
     }
 
     // MARK: - GPS Handling
@@ -242,6 +256,8 @@ public final class RunEngine {
         // Update elapsed time and check interval completion using GPS timestamp.
         updateElapsedTime(at: now)
         checkIntervalCompletion()
+
+        publishSnapshot()
     }
 
     // MARK: - Interval Advancement
@@ -357,6 +373,42 @@ public final class RunEngine {
     private func cancelCheckpointTimer() {
         checkpointTimer?.cancel()
         checkpointTimer = nil
+    }
+
+    // MARK: - Snapshot Publishing
+
+    /// Build and publish an immutable snapshot of the current run state.
+    private func publishSnapshot() {
+        let interval = currentInterval
+        let remaining: TimeInterval
+        if let interval {
+            remaining = max(0, Double(interval.durationSeconds) - currentIntervalElapsed)
+        } else {
+            remaining = 0
+        }
+
+        let nextType: IntervalType?
+        let nextIndex = currentIntervalIndex + 1
+        if nextIndex < sessionDefinition.intervals.count {
+            nextType = sessionDefinition.intervals[nextIndex].type
+        } else {
+            nextType = nil
+        }
+
+        let snapshot = RunSnapshot(
+            currentIntervalType: interval?.type ?? .warmUp,
+            currentIntervalLabel: interval?.label ?? "—",
+            intervalRemaining: remaining,
+            totalElapsed: totalElapsed,
+            totalDistance: totalDistance,
+            currentIntervalIndex: currentIntervalIndex,
+            totalIntervals: sessionDefinition.intervals.count,
+            isRunning: isRunning,
+            isPaused: isPaused,
+            isComplete: isComplete,
+            nextIntervalType: nextType
+        )
+        onSnapshot?(snapshot)
     }
 
     /// Persist current state to UserDefaults.
