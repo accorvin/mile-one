@@ -13,4 +13,6 @@ public protocol AudioCoaching: AnyObject, Sendable {
     func stop()
     /// Deactivate the audio session when the run ends.
     func deactivateSession()
+    /// Cancel any pending speech utterances that haven't started yet.
+    func cancelPending()
 }
