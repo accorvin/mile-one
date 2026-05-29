@@ -26,6 +26,10 @@
 - [**Phase 7: History & Settings**](phase-7-history.md) — History + Settings + iCloud Sync (~1 week)
 - [**Phase 8: Graduation**](phase-8-graduation.md) — Graduation + Free Run + Polish (~1 week)
 
+### Testing
+
+- [**Testing Strategy**](testing-strategy.md) — Testing pyramid, integration tests, UI tests, accessibility audits, GPX fixtures, Test Plan, on-device smoke checklist, code coverage targets
+
 ### Reference
 
 - [**Known Limitations & Workarounds**](known-limitations.md) — Section 8: AVSpeechSynthesizer, location permissions, SwiftData quirks, GPS accuracy, battery

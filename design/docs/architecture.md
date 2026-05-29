@@ -425,11 +425,23 @@ MileOne/
     │       ├── MockHealthStore.swift
     │       ├── MockAudioCoach.swift
     │       └── MockDataStore.swift
-    └── MileOneUITests/
-        ├── OnboardingUITests.swift
-        ├── DashboardUITests.swift
-        ├── RunFlowUITests.swift
-        └── RoutePlannerUITests.swift
+    ├── MileOneIntegrationTests/
+    │   ├── RunPipelineTests.swift
+    │   ├── PostRunPipelineTests.swift
+    │   ├── DataStorePersistenceTests.swift
+    │   ├── LocationDistanceTests.swift
+    │   └── CalorieIntegrationTests.swift
+    ├── MileOneUITests/
+    │   ├── OnboardingUITests.swift
+    │   ├── DashboardUITests.swift
+    │   ├── RunFlowUITests.swift
+    │   ├── RoutePlannerUITests.swift
+    │   └── AccessibilityAuditTests.swift
+    ├── TestFixtures/
+    │   ├── test-1mile-loop.gpx
+    │   ├── test-noisy-gps.gpx
+    │   └── test-stationary.gpx
+    └── MileOne.xctestplan
 ```
 
 ### Entitlements File (`MileOne.entitlements`)
