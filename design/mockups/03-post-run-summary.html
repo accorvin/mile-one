@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mile One — Post-Run Summary</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a2e; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: -apple-system, 'SF Pro Display', 'Helvetica Neue', sans-serif; }
+.phone { width: 393px; height: 852px; background: #0a0a1a; border-radius: 47px; border: 3px solid #333; position: relative; overflow: hidden; box-shadow: 0 0 60px rgba(0,0,0,.5); }
+.notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 126px; height: 37px; background: #0a0a1a; border-radius: 0 0 20px 20px; z-index: 10; }
+.status-bar { display: flex; justify-content: space-between; align-items: center; padding: 16px 30px 0; height: 54px; color: #fff; font-size: 14px; font-weight: 600; }
+.screen { padding: 0 24px; height: calc(100% - 54px); display: flex; flex-direction: column; overflow-y: auto; }
+.screen::-webkit-scrollbar { display: none; }
+
+/* Header */
+.header { text-align: center; margin-top: 20px; margin-bottom: 20px; }
+.checkmark { width: 56px; height: 56px; background: linear-gradient(135deg, #4ade80, #22c55e); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+.checkmark svg { width: 28px; height: 28px; fill: #0a0a1a; }
+.header h1 { color: #fff; font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+.header .subtitle { color: rgba(255,255,255,.5); font-size: 15px; font-weight: 400; }
+.header .personal { color: rgba(255,255,255,.6); font-size: 14px; margin-top: 8px; font-weight: 500; }
+
+/* Map placeholder */
+.map-container { width: 100%; height: 220px; background: #162033; border-radius: 16px; margin-bottom: 20px; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.map-route { position: absolute; }
+.map-route svg { width: 280px; height: 140px; }
+.map-label { position: absolute; bottom: 10px; right: 12px; background: rgba(0,0,0,.6); color: rgba(255,255,255,.6); font-size: 10px; padding: 3px 8px; border-radius: 6px; }
+
+/* Stats Grid */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.stat-card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 16px; }
+.stat-card .label { color: rgba(255,255,255,.4); font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+.stat-card .value { color: #fff; font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat-card .unit { color: rgba(255,255,255,.35); font-size: 14px; font-weight: 400; margin-left: 2px; }
+.stat-card.highlight { background: rgba(74,222,128,.08); border-color: rgba(74,222,128,.15); }
+.stat-card.highlight .value { color: #4ade80; }
+
+/* Intervals completed */
+.intervals-bar { margin-bottom: 24px; }
+.intervals-label { color: rgba(255,255,255,.5); font-size: 12px; font-weight: 500; margin-bottom: 8px; }
+.intervals-row { display: flex; gap: 4px; }
+.interval-pip { flex: 1; height: 10px; border-radius: 5px; }
+.interval-pip.done { background: #4ade80; }
+.interval-pip.walk-done { background: #60a5fa; }
+
+/* Effort check-in */
+.effort-section { margin-bottom: 24px; }
+.effort-title { color: #fff; font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.effort-subtitle { color: rgba(255,255,255,.5); font-size: 13px; margin-bottom: 14px; }
+.effort-buttons { display: flex; gap: 10px; }
+.effort-btn { flex: 1; padding: 14px 8px; border-radius: 12px; border: 1.5px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); text-align: center; cursor: pointer; transition: all .15s; }
+.effort-btn:hover { border-color: rgba(255,255,255,.25); background: rgba(255,255,255,.08); }
+.effort-btn .emoji { font-size: 24px; margin-bottom: 4px; }
+.effort-btn .text { color: rgba(255,255,255,.7); font-size: 12px; font-weight: 500; }
+.effort-btn.selected { border-color: rgba(74,222,128,.5); background: rgba(74,222,128,.1); }
+.effort-btn.selected .text { color: #4ade80; }
+
+/* CTA */
+.cta-section { padding-bottom: 40px; margin-top: auto; }
+.cta-btn { width: 100%; padding: 18px; background: linear-gradient(135deg, #4ade80, #22c55e); color: #0a0a1a; font-size: 17px; font-weight: 700; border: none; border-radius: 16px; cursor: pointer; letter-spacing: .5px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="notch"></div>
+  <div class="status-bar">
+    <div style="width:54px; color:#fff">3:58</div>
+    <div style="width:54px"></div>
+    <div style="display:flex;gap:5px;align-items:center;width:77px;justify-content:flex-end">
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="white"><rect x="0" y="5" width="3" height="7" rx="1"/><rect x="4.5" y="3" width="3" height="9" rx="1"/><rect x="9" y="1" width="3" height="11" rx="1"/><rect x="13.5" y="0" width="2.5" height="12" rx="1" opacity=".3"/></svg>
+      <svg width="17" height="12" viewBox="0 0 17 12" fill="white"><rect x="0" y="0" width="17" height="12" rx="3" fill="none" stroke="white" stroke-width="1.2"/><rect x="1.5" y="1.5" width="10" height="9" rx="1.5" fill="white"/><rect x="17" y="3.5" width="2" height="5" rx="1" fill="white"/></svg>
+    </div>
+  </div>
+  <div class="screen">
+    <div class="header">
+      <div class="checkmark">
+        <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+      </div>
+      <h1>Run complete! 🎉</h1>
+      <div class="subtitle">Week 3 · Run 2 of 3</div>
+      <div class="personal">That's 0.3 miles further than last time!</div>
+    </div>
+
+    <!-- Map -->
+    <div class="map-container">
+      <div class="map-route">
+        <svg viewBox="0 0 280 140">
+          <path d="M30 110 Q60 100 80 70 Q100 40 140 35 Q180 30 200 55 Q220 80 250 75" 
+                fill="none" stroke="#4ade80" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="30" cy="110" r="5" fill="#4ade80"/>
+          <circle cx="250" cy="75" r="5" fill="#ef4444"/>
+        </svg>
+      </div>
+      <div class="map-label">Tap to expand</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card highlight">
+        <div class="label">Distance</div>
+        <div class="value">1.82<span class="unit">mi</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Duration</div>
+        <div class="value">28:14</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Avg Pace</div>
+        <div class="value">15:31<span class="unit">/mi</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Calories</div>
+        <div class="value">247<span class="unit">cal</span></div>
+      </div>
+    </div>
+
+    <!-- Intervals -->
+    <div class="intervals-bar">
+      <div class="intervals-label">Intervals completed: 8 of 8</div>
+      <div class="intervals-row">
+        <div class="interval-pip walk-done"></div>
+        <div class="interval-pip done"></div>
+        <div class="interval-pip walk-done"></div>
+        <div class="interval-pip done"></div>
+        <div class="interval-pip walk-done"></div>
+        <div class="interval-pip done"></div>
+        <div class="interval-pip walk-done"></div>
+        <div class="interval-pip done"></div>
+      </div>
+    </div>
+
+    <!-- Effort -->
+    <div class="effort-section">
+      <div class="effort-title">How did that feel?</div>
+      <div class="effort-subtitle">We'll track this in your run history</div>
+      <div class="effort-buttons">
+        <div class="effort-btn">
+          <div class="emoji">😎</div>
+          <div class="text">Too Easy</div>
+        </div>
+        <div class="effort-btn selected">
+          <div class="emoji">💪</div>
+          <div class="text">Just Right</div>
+        </div>
+        <div class="effort-btn">
+          <div class="emoji">😮‍💨</div>
+          <div class="text">Too Hard</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-section">
+      <button class="cta-btn">Back to Dashboard →</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
