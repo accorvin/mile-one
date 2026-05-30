@@ -37,6 +37,23 @@ public final class DashboardViewModel {
     /// True when the user has graduated and should see the free run option.
     public private(set) var showFreeRunOption: Bool = false
 
+    /// The week the user started the program (for skipped-weeks context).
+    public private(set) var startingWeek: Int = 1
+
+    /// Whether user prefers metric units.
+    public private(set) var usesMetric: Bool = false
+
+    /// True when the user has never completed any run.
+    public private(set) var isFirstRun: Bool = true
+
+    /// Lifetime stats for the stats footer.
+    public private(set) var lifetimeStats: LifetimeStats = .zero
+
+    /// The session definition for the next run.
+    public var nextSession: SessionDefinition? {
+        SessionPlanLibrary.session(week: currentWeek, day: nextSessionNumber)
+    }
+
     // MARK: - Init
 
     public init(dataStore: any DataStoreProviding) {
@@ -45,16 +62,28 @@ public final class DashboardViewModel {
 
     // MARK: - Data Loading
 
-    /// Fetches the user profile and computes dashboard state.
+    /// Fetches the user profile, stats, and computes dashboard state.
     public func loadData() async {
         guard let profile = try? await dataStore.fetchUserProfile() else { return }
         currentWeek = profile.currentWeek
+        startingWeek = profile.startingWeek
+        usesMetric = profile.usesMetric
         let completed = profile.completedSessionsThisWeek
         nextSessionNumber = min(completed + 1, 3)
         completionRingProgress = Double(completed) / 3.0
         canAdvanceWeek = completed >= 3
         hasGraduated = profile.hasGraduated
         showFreeRunOption = profile.hasGraduated
+
+        // Load run history to determine first-run state and lifetime stats
+        let allRuns = (try? await dataStore.fetchCompletedRuns(weekNumber: nil, limit: nil)) ?? []
+        isFirstRun = allRuns.isEmpty
+        lifetimeStats = LifetimeStats(
+            totalDistance: allRuns.reduce(0) { $0 + $1.distanceMeters },
+            totalDuration: allRuns.reduce(0) { $0 + $1.durationSeconds },
+            totalCalories: allRuns.reduce(0) { $0 + $1.calories },
+            totalRuns: allRuns.count
+        )
     }
 
     /// Checks whether the user is lapsed (no run in > 7 days) and updates `isLapsed`.
