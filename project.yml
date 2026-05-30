@@ -1,0 +1,52 @@
+name: MileOne
+options:
+  bundleIdPrefix: com.accorvin
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "26.0"
+  defaultConfig: Debug
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+targets:
+  MileOne:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources/MileOne
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.accorvin.mileone
+        INFOPLIST_GENERATION_MODE: GeneratedFile
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: 1
+        GENERATE_INFOPLIST_FILE: true
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Mile One tracks your route while you run."
+        INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription: "Mile One tracks your route during runs, even when backgrounded."
+        INFOPLIST_KEY_NSHealthShareUsageDescription: "Mile One reads your heart rate and health data to track calories burned during runs."
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "Mile One saves your workouts and running data to Apple Health."
+        INFOPLIST_KEY_UIBackgroundModes: "location,audio"
+        CODE_SIGN_IDENTITY: "Apple Development"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ""
+    entitlements:
+      path: MileOne.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access:
+          - health-records
+  MileOneTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/MileOneTests
+    dependencies:
+      - target: MileOne
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.accorvin.mileone.tests
+        GENERATE_INFOPLIST_FILE: true
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/MileOne.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MileOne"
+        BUNDLE_LOADER: "$(TEST_HOST)"
