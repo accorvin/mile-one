@@ -18,6 +18,9 @@ public final class RoutePlannerViewModel {
     /// Total distance of the calculated route in meters.
     public var totalDistance: Double = 0
 
+    /// Snapped polyline coordinates from the last successful route calculation.
+    public var routePolyline: [CLLocationCoordinate2D] = []
+
     /// Whether a route calculation is in progress.
     public var isCalculating: Bool = false
 
@@ -62,6 +65,7 @@ public final class RoutePlannerViewModel {
     public func clearAll() {
         waypoints.removeAll()
         totalDistance = 0
+        routePolyline = []
         lastError = nil
     }
 
@@ -78,6 +82,7 @@ public final class RoutePlannerViewModel {
         do {
             let segments = try await routeService.calculateMultiWaypointRoute(waypoints: waypoints)
             totalDistance = segments.reduce(0) { $0 + $1.distance }
+            routePolyline = segments.flatMap { $0.polylineCoordinates }
         } catch {
             lastError = error
         }

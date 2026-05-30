@@ -46,6 +46,16 @@ public struct RoutePlannerView: View {
     private var mapLayer: some View {
         MapReader { proxy in
             Map(position: $mapPosition) {
+                // Snapped route polyline (road-snap mode)
+                if viewModel.routePolyline.count >= 2 {
+                    MapPolyline(coordinates: viewModel.routePolyline)
+                        .stroke(.blue, style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                }
+                // Straight preview line while route is being calculated
+                if viewModel.isCalculating && viewModel.waypoints.count >= 2 {
+                    MapPolyline(coordinates: viewModel.waypoints)
+                        .stroke(.blue.opacity(0.4), style: StrokeStyle(lineWidth: 3, lineCap: .round, dash: [6, 4]))
+                }
                 ForEach(Array(viewModel.waypoints.enumerated()), id: \.offset) { index, coord in
                     Annotation("", coordinate: coord) {
                         Circle()
