@@ -94,6 +94,25 @@ struct RunViewModelTests {
     @Test("Distance formatted in miles: 1609.344m = 1.00 mi")
     func distanceFormattedInMiles() {
         let vm = RunViewModel()
+        vm.usesMetric = false
+        vm.update(with: makeSnapshot(distance: 1_609.344))
+
+        #expect(vm.formattedDistance == "1.00 mi")
+    }
+
+    @Test("Metric user sees distance in km: 1000m = 1.00 km")
+    func distanceFormattedInKilometers() {
+        let vm = RunViewModel()
+        vm.usesMetric = true
+        vm.update(with: makeSnapshot(distance: 1_000.0))
+
+        #expect(vm.formattedDistance == "1.00 km")
+    }
+
+    @Test("Imperial user sees distance in miles: ~1609m = 1.00 mi")
+    func distanceFormattedInMilesForImperialUser() {
+        let vm = RunViewModel()
+        vm.usesMetric = false
         vm.update(with: makeSnapshot(distance: 1_609.344))
 
         #expect(vm.formattedDistance == "1.00 mi")

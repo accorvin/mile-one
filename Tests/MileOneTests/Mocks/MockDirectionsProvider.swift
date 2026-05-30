@@ -40,4 +40,17 @@ public final class MockDirectionsProvider: DirectionsProviding, @unchecked Senda
         )
     }
 }
+// MARK: - FailingDirectionsProvider
+
+/// Always throws an error — used to test failure paths.
+public final class FailingDirectionsProvider: DirectionsProviding, @unchecked Sendable {
+    public init() {}
+
+    public func calculate(
+        from: CLLocationCoordinate2D,
+        to: CLLocationCoordinate2D
+    ) async throws -> RouteResult {
+        throw RouteError.serverFailure
+    }
+}
 #endif

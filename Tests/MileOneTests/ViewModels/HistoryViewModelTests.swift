@@ -77,6 +77,48 @@ struct HistoryViewModelTests {
         #expect(gpsFetchedAfter == true)
     }
 
+    @Test func loadRunsThrowingSetsErrorMessage() async throws {
+        let mockStore = MockDataStore()
+        await mockStore.setShouldThrowOnFetchRuns(true)
+
+        let vm = HistoryViewModel(dataStore: mockStore)
+        await vm.loadRuns()
+
+        #expect(vm.errorMessage != nil,
+                "loadRuns() with a throwing store must set errorMessage")
+        #expect(vm.groupedRuns.isEmpty,
+                "loadRuns() with a throwing store must leave groupedRuns empty")
+    }
+
+    @Test func crossYearRunsGroupedSeparately() async throws {
+        let mockStore = MockDataStore()
+        let dec31 = makeDate(2024, 12, 31)
+        let jan01 = makeDate(2025, 1, 1)
+        await mockStore.setMockRuns([
+            makeRun(week: 1, session: 1, date: dec31),
+            makeRun(week: 1, session: 2, date: jan01),
+        ])
+
+        let vm = HistoryViewModel(dataStore: mockStore)
+        await vm.loadRuns()
+
+        #expect(vm.groupedRuns.count == 2,
+                "Runs in December 2024 and January 2025 must be in separate month groups")
+
+        let decKey = vm.groupedRuns.keys.first { key in
+            let c = Calendar.current.dateComponents([.year, .month], from: key)
+            return c.year == 2024 && c.month == 12
+        }
+        let janKey = vm.groupedRuns.keys.first { key in
+            let c = Calendar.current.dateComponents([.year, .month], from: key)
+            return c.year == 2025 && c.month == 1
+        }
+        #expect(decKey != nil, "December 2024 group must exist")
+        #expect(janKey != nil, "January 2025 group must exist")
+        #expect(vm.groupedRuns[decKey!]?.count == 1)
+        #expect(vm.groupedRuns[janKey!]?.count == 1)
+    }
+
     // MARK: - Helpers
 
     private func makeDate(_ year: Int, _ month: Int, _ day: Int) -> Date {

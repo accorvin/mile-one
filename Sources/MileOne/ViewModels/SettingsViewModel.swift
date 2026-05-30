@@ -124,6 +124,8 @@ public final class SettingsViewModel {
             if remindersEnabled {
                 let time = DateComponents(hour: reminderHour, minute: reminderMinute)
                 try await notificationService.scheduleRunReminders(runDays: runDays, time: time)
+            } else {
+                notificationService.cancelAllReminders()
             }
         } catch {
             errorMessage = error.localizedDescription

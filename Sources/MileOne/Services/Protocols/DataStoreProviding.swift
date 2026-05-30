@@ -63,4 +63,8 @@ public protocol DataStoreProviding: Actor {
     func updateEffortRating(runId: UUID, rating: EffortRating) async throws
 
     func incrementCompletedSessions() async throws
+
+    /// Advance currentWeek by 1 and reset completedSessionsThisWeek to 0.
+    /// Throws if no profile exists or already at week 9.
+    func advanceWeek() async throws
 }

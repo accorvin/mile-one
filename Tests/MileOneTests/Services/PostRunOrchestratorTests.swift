@@ -268,6 +268,54 @@ struct PostRunOrchestratorTests {
         #expect(result.healthKitError != nil)
     }
 
+    @Test("saveCompletedRun throwing causes failure result and skips GPS and HealthKit")
+    func saveCompletedRunThrowingCausesFailure() async throws {
+        let mockStore = MockDataStore()
+        await mockStore.setMockProfile(UserProfileSnapshot(
+            heightCm: 175, weightKg: 70, birthYear: 1990,
+            biologicalSex: .male, currentWeek: 3,
+            completedSessionsThisWeek: 1, hasCompletedOnboarding: true,
+            hasGraduated: false, startingWeek: 1, usesMetric: true,
+            runDays: [2, 4, 6], reminderHour: 7, reminderMinute: 0,
+            remindersEnabled: true
+        ))
+        // Make saveCompletedRun throw
+        await mockStore.setShouldThrowOnSaveRun(true)
+
+#if canImport(HealthKit)
+        let mock = MockHealthStore()
+        mock.authorizationGranted = true
+        let orchestrator = PostRunOrchestrator(dataStore: mockStore, healthStore: mock)
+#else
+        let orchestrator = PostRunOrchestrator(dataStore: mockStore)
+#endif
+
+        let runStart = Date().addingTimeInterval(-600)
+        let locations = makeLocations(count: 3, startDate: runStart)
+
+        do {
+            _ = try await orchestrator.saveRun(
+                weekNumber: 3,
+                sessionNumber: 2,
+                runStart: runStart,
+                locations: locations,
+                totalElapsed: 600,
+                totalDistance: 1500,
+                intervals: sampleIntervals
+            )
+            Issue.record("saveRun should have thrown when saveCompletedRun throws")
+        } catch {
+            // Error is surfaced (not swallowed) — that's the expected behaviour
+            let gpsCount = await mockStore.mockGPSPoints.count
+            #expect(gpsCount == 0, "GPS points must not be saved when run save fails")
+
+#if canImport(HealthKit)
+            let hk = healthStore(from: orchestrator)
+            #expect(hk.savedWorkouts.isEmpty, "HealthKit save must be skipped when run save fails")
+#endif
+        }
+    }
+
     @Test("GPS points with zero or negative speed are clamped to zero")
     func negativeSpeedClampedToZero() async throws {
         let container = try makeTestContainer()

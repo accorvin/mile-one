@@ -16,7 +16,14 @@ public struct ContentView: View {
     public var body: some View {
         Group {
             if appState.hasCompletedOnboarding {
-                DashboardView(dataStore: dataStore)
+                DashboardView(dataStore: dataStore, appState: appState)
+                    .sheet(isPresented: $appState.isShowingRun) {
+                        if let session = appState.activeSession {
+                            if #available(iOS 17.0, *) {
+                                RunStartView(session: session, appState: appState, dataStore: dataStore)
+                            }
+                        }
+                    }
             } else {
                 OnboardingContainerView(dataStore: dataStore) {
                     appState.hasCompletedOnboarding = true

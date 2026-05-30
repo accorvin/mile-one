@@ -228,6 +228,26 @@ public actor DataStore: DataStoreProviding {
         try modelContext.save()
     }
 
+    public func advanceWeek() async throws {
+        let descriptor = FetchDescriptor<UserProfile>()
+        guard let profile = try modelContext.fetch(descriptor).first else {
+            throw DataStoreError.profileNotFound
+        }
+        if profile.currentWeek >= 9 {
+            // At week 9 with 3 sessions done — mark as graduated
+            if profile.completedSessionsThisWeek >= 3 && !profile.hasGraduated {
+                profile.hasGraduated = true
+                profile.updatedAt = Date()
+                try modelContext.save()
+            }
+            return
+        }
+        profile.currentWeek += 1
+        profile.completedSessionsThisWeek = 0
+        profile.updatedAt = Date()
+        try modelContext.save()
+    }
+
     // MARK: - Snapshot Factories (private helpers)
 
     private func snapshot(from profile: UserProfile) -> UserProfileSnapshot {

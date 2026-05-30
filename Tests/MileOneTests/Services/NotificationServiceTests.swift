@@ -59,6 +59,51 @@ struct NotificationServiceTests {
                 "Must not schedule if permission denied")
     }
 
+    @Test func cancelAllRemindersCallsRemoveAll() async throws {
+        let mockCenter = MockNotificationCenter()
+        let service = NotificationService(center: mockCenter)
+
+        service.cancelAllReminders()
+
+        #expect(mockCenter.removeAllCalled == true,
+                "cancelAllReminders must call removeAllPendingNotificationRequests")
+    }
+
+    @Test func schedulingWithAuthDeniedDoesNotCrashAndAddsNoRequests() async throws {
+        let mockCenter = MockNotificationCenter()
+        mockCenter.authorizationGranted = false
+        let service = NotificationService(center: mockCenter)
+
+        // Must not throw and must not add any requests
+        try await service.scheduleRunReminders(
+            runDays: [2, 4, 6],
+            time: DateComponents(hour: 8, minute: 0)
+        )
+
+        #expect(mockCenter.addedRequests.count == 0,
+                "Denied auth: no notifications should be added")
+    }
+
+    @Test func cancelAllAfterSchedulingThreeRemindersLeavesNoneButSetsFlag() async throws {
+        let mockCenter = MockNotificationCenter()
+        let service = NotificationService(center: mockCenter)
+
+        // Schedule 3 reminders
+        try await service.scheduleRunReminders(
+            runDays: [2, 4, 6],
+            time: DateComponents(hour: 7, minute: 0)
+        )
+        #expect(mockCenter.addedRequests.count == 3)
+
+        // Cancel all
+        service.cancelAllReminders()
+
+        #expect(mockCenter.addedRequests.count == 0,
+                "After cancelAllReminders, no pending requests should remain")
+        #expect(mockCenter.removeAllCalled == true,
+                "removeAllCalled should be true after cancelAllReminders")
+    }
+
     @Test func reminderContentIsMotivational() async throws {
         let mockCenter = MockNotificationCenter()
         let service = NotificationService(center: mockCenter)

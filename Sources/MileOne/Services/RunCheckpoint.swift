@@ -33,22 +33,22 @@ public struct RunCheckpoint: Codable, Sendable {
 
     // MARK: - Persistence
 
-    private static let key = "com.mileone.runCheckpoint"
+    public static let key = "com.mileone.runCheckpoint"
 
-    /// Save this checkpoint to UserDefaults.
-    public func save() {
+    /// Save this checkpoint to a UserDefaults store (defaults to `.standard`).
+    public func save(to store: UserDefaults = .standard) {
         guard let data = try? JSONEncoder().encode(self) else { return }
-        UserDefaults.standard.set(data, forKey: RunCheckpoint.key)
+        store.set(data, forKey: RunCheckpoint.key)
     }
 
-    /// Load the most recent checkpoint from UserDefaults, if any.
-    public static func load() -> RunCheckpoint? {
-        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
+    /// Load the most recent checkpoint from a UserDefaults store.
+    public static func load(from store: UserDefaults = .standard) -> RunCheckpoint? {
+        guard let data = store.data(forKey: key) else { return nil }
         return try? JSONDecoder().decode(RunCheckpoint.self, from: data)
     }
 
-    /// Clear any saved checkpoint.
-    public static func clear() {
-        UserDefaults.standard.removeObject(forKey: key)
+    /// Clear any saved checkpoint from a UserDefaults store.
+    public static func clear(from store: UserDefaults = .standard) {
+        store.removeObject(forKey: key)
     }
 }

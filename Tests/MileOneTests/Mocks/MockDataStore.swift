@@ -1,6 +1,13 @@
 import Foundation
 @testable import MileOne
 
+// MARK: - MockDataStoreError
+
+enum MockDataStoreError: Error {
+    case fetchFailed
+    case saveFailed
+}
+
 // MARK: - MockDataStore
 
 /// In-memory mock conforming to DataStoreProviding.
@@ -20,11 +27,34 @@ public actor MockDataStore: DataStoreProviding {
     public var mockRoutes: [SavedRouteSnapshot] = []
     public var mockLastRunDate: Date?
 
+    // MARK: - Error Injection
+
+    /// Set to true to make fetchUserProfile() throw.
+    public var shouldThrowOnFetch: Bool = false
+    /// Set to true to make saveUserProfile() throw.
+    public var shouldThrowOnSave: Bool = false
+    /// Set to true to make fetchCompletedRuns() throw.
+    public var shouldThrowOnFetchRuns: Bool = false
+    /// Set to true to make saveCompletedRun() throw.
+    public var shouldThrowOnSaveRun: Bool = false
+    /// Set to true to make saveGPSPoints() throw.
+    public var shouldThrowOnSaveGPS: Bool = false
+    /// Set to true to make fetchGPSPoints() throw.
+    public var shouldThrowOnFetchGPS: Bool = false
+
+    public func setShouldThrowOnFetch(_ value: Bool) { shouldThrowOnFetch = value }
+    public func setShouldThrowOnSave(_ value: Bool) { shouldThrowOnSave = value }
+    public func setShouldThrowOnFetchRuns(_ value: Bool) { shouldThrowOnFetchRuns = value }
+    public func setShouldThrowOnSaveRun(_ value: Bool) { shouldThrowOnSaveRun = value }
+    public func setShouldThrowOnSaveGPS(_ value: Bool) { shouldThrowOnSaveGPS = value }
+    public func setShouldThrowOnFetchGPS(_ value: Bool) { shouldThrowOnFetchGPS = value }
+
     // MARK: - Call Tracking
 
     public var savedRunCount = 0
     public var gpsPointsFetched = false
     public var incrementSessionsCalled = false
+    public var advanceWeekCalled = false
 
     // MARK: - Init
 
@@ -57,12 +87,14 @@ public actor MockDataStore: DataStoreProviding {
         savedRunCount = 0
         gpsPointsFetched = false
         incrementSessionsCalled = false
+        advanceWeekCalled = false
     }
 
     // MARK: - DataStoreProviding Conformance
 
     public func fetchUserProfile() async throws -> UserProfileSnapshot? {
-        mockProfile
+        if shouldThrowOnFetch { throw MockDataStoreError.fetchFailed }
+        return mockProfile
     }
 
     public func saveUserProfile(
@@ -81,6 +113,7 @@ public actor MockDataStore: DataStoreProviding {
         reminderMinute: Int,
         remindersEnabled: Bool
     ) async throws {
+        if shouldThrowOnSave { throw MockDataStoreError.saveFailed }
         mockProfile = UserProfileSnapshot(
             heightCm: heightCm,
             weightKg: weightKg,
@@ -111,6 +144,7 @@ public actor MockDataStore: DataStoreProviding {
         effortRating: EffortRating?,
         isFreeRun: Bool
     ) async throws -> UUID {
+        if shouldThrowOnSaveRun { throw MockDataStoreError.saveFailed }
         let id = UUID()
         let snapshot = CompletedRunSnapshot(
             id: id,
@@ -131,6 +165,7 @@ public actor MockDataStore: DataStoreProviding {
     }
 
     public func fetchCompletedRuns(weekNumber: Int?, limit: Int?) async throws -> [CompletedRunSnapshot] {
+        if shouldThrowOnFetchRuns { throw MockDataStoreError.fetchFailed }
         var result = mockRuns
         if let weekNumber {
             result = result.filter { $0.weekNumber == weekNumber }
@@ -142,11 +177,13 @@ public actor MockDataStore: DataStoreProviding {
     }
 
     public func fetchGPSPoints(forRunId: UUID) async throws -> [GPSPointSnapshot] {
+        if shouldThrowOnFetchGPS { throw MockDataStoreError.fetchFailed }
         gpsPointsFetched = true
         return mockGPSPoints
     }
 
     public func saveGPSPoints(_ points: [GPSPointData], forRunId: UUID) async throws {
+        if shouldThrowOnSaveGPS { throw MockDataStoreError.saveFailed }
         mockGPSPoints = points.map { data in
             GPSPointSnapshot(
                 latitude:          data.latitude,
@@ -218,6 +255,48 @@ public actor MockDataStore: DataStoreProviding {
             biologicalSex: profile.biologicalSex,
             currentWeek: profile.currentWeek,
             completedSessionsThisWeek: profile.completedSessionsThisWeek + 1,
+            hasCompletedOnboarding: profile.hasCompletedOnboarding,
+            hasGraduated: profile.hasGraduated,
+            startingWeek: profile.startingWeek,
+            usesMetric: profile.usesMetric,
+            runDays: profile.runDays,
+            reminderHour: profile.reminderHour,
+            reminderMinute: profile.reminderMinute,
+            remindersEnabled: profile.remindersEnabled
+        )
+    }
+
+    public func advanceWeek() async throws {
+        advanceWeekCalled = true
+        guard let profile = mockProfile else { return }
+        if profile.currentWeek >= 9 {
+            if profile.completedSessionsThisWeek >= 3 && !profile.hasGraduated {
+                mockProfile = UserProfileSnapshot(
+                    heightCm: profile.heightCm,
+                    weightKg: profile.weightKg,
+                    birthYear: profile.birthYear,
+                    biologicalSex: profile.biologicalSex,
+                    currentWeek: profile.currentWeek,
+                    completedSessionsThisWeek: profile.completedSessionsThisWeek,
+                    hasCompletedOnboarding: profile.hasCompletedOnboarding,
+                    hasGraduated: true,
+                    startingWeek: profile.startingWeek,
+                    usesMetric: profile.usesMetric,
+                    runDays: profile.runDays,
+                    reminderHour: profile.reminderHour,
+                    reminderMinute: profile.reminderMinute,
+                    remindersEnabled: profile.remindersEnabled
+                )
+            }
+            return
+        }
+        mockProfile = UserProfileSnapshot(
+            heightCm: profile.heightCm,
+            weightKg: profile.weightKg,
+            birthYear: profile.birthYear,
+            biologicalSex: profile.biologicalSex,
+            currentWeek: profile.currentWeek + 1,
+            completedSessionsThisWeek: 0,
             hasCompletedOnboarding: profile.hasCompletedOnboarding,
             hasGraduated: profile.hasGraduated,
             startingWeek: profile.startingWeek,

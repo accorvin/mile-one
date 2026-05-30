@@ -94,16 +94,21 @@ public final class RunEngine {
     ///   - locationProvider: GPS abstraction (inject mock for tests).
     ///   - audioCoach: Audio cue abstraction (inject mock for tests).
     ///   - timeProvider: Wall-clock abstraction (inject mock for tests).
+    /// UserDefaults store used for checkpoint persistence. Injected for testability.
+    private let checkpointStore: UserDefaults
+
     public init(
         sessionDefinition: SessionDefinition,
         locationProvider: LocationProviding,
         audioCoach: AudioCoaching,
-        timeProvider: TimeProviding = SystemTimeProvider()
+        timeProvider: TimeProviding = SystemTimeProvider(),
+        checkpointStore: UserDefaults = .standard
     ) {
         self.sessionDefinition = sessionDefinition
         self.locationProvider = locationProvider
         self.audioCoach = audioCoach
         self.timeProvider = timeProvider
+        self.checkpointStore = checkpointStore
     }
 
     deinit {
@@ -158,10 +163,9 @@ public final class RunEngine {
 
         // Accumulate elapsed time from the current segment.
         if let segStart = segmentStartTime {
-            accumulatedElapsed += now.timeIntervalSince(segStart)
-            if let intervalStart = segmentStartTime {
-                intervalAccumulatedElapsed += now.timeIntervalSince(intervalStart)
-            }
+            let elapsed = now.timeIntervalSince(segStart)
+            accumulatedElapsed += elapsed
+            intervalAccumulatedElapsed += elapsed
         }
 
         isPaused = true
@@ -201,7 +205,7 @@ public final class RunEngine {
         stopEverything()
         isComplete = true
         audioCoach.speak("Congratulations! You've completed your run.")
-        RunCheckpoint.clear()
+        RunCheckpoint.clear(from: checkpointStore)
         publishSnapshot()
         onRunComplete?(totalElapsed, totalDistance, gpsPoints)
     }
@@ -416,14 +420,14 @@ public final class RunEngine {
         onSnapshot?(snapshot)
     }
 
-    /// Persist current state to UserDefaults.
-    private func saveCheckpoint() {
+    /// Persist current state to UserDefaults. Internal for test access.
+    func saveCheckpoint() {
         let checkpoint = RunCheckpoint(
             sessionId: sessionDefinition.id,
             currentIntervalIndex: currentIntervalIndex,
             totalElapsed: totalElapsed,
             totalDistance: totalDistance
         )
-        checkpoint.save()
+        checkpoint.save(to: checkpointStore)
     }
 }

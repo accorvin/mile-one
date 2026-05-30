@@ -14,6 +14,9 @@ public final class RunViewModel {
 
     public var snapshot: RunSnapshot = .empty
 
+    /// Whether to display distance in metric (km) or imperial (miles).
+    public var usesMetric: Bool = false
+
     // MARK: - Update
 
     /// Receive a new snapshot from RunEngine.
@@ -44,10 +47,15 @@ public final class RunViewModel {
         color(for: snapshot.currentIntervalType)
     }
 
-    /// Distance formatted in miles with 2 decimal places.
+    /// Distance formatted in km or miles with 2 decimal places.
     public var formattedDistance: String {
-        let miles = snapshot.totalDistance / 1_609.344
-        return String(format: "%.2f mi", miles)
+        if usesMetric {
+            let km = snapshot.totalDistance / 1_000.0
+            return String(format: "%.2f km", km)
+        } else {
+            let miles = snapshot.totalDistance / 1_609.344
+            return String(format: "%.2f mi", miles)
+        }
     }
 
     /// Label for the next interval, or nil if none.

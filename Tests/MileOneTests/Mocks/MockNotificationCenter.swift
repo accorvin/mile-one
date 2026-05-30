@@ -24,6 +24,14 @@ final class MockNotificationCenter: NotificationCenterProviding, @unchecked Send
     /// Set to true when removeAllPendingNotificationRequests() is called.
     private(set) var didRemoveAll: Bool = false
 
+    // MARK: - Aliases for test convenience
+
+    /// Alias for pendingRequests — tracks all added requests.
+    var addedRequests: [UNNotificationRequest] { pendingRequests }
+
+    /// Alias for didRemoveAll.
+    var removeAllCalled: Bool { didRemoveAll }
+
     // MARK: - NotificationCenterProviding
 
     func requestAuthorization(options: UNAuthorizationOptions) async throws -> Bool {

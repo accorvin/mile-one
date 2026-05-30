@@ -3,7 +3,11 @@ import Foundation
 import CoreLocation
 
 final class MockLocationProvider: LocationProviding, @unchecked Sendable {
+    #if os(iOS)
     var authorizationStatus: CLAuthorizationStatus = .authorizedWhenInUse
+    #else
+    var authorizationStatus: CLAuthorizationStatus = .authorized
+    #endif
     var onLocationUpdate: ((CLLocation) -> Void)?
     var onAuthorizationChange: ((CLAuthorizationStatus) -> Void)?
     var onLocationError: ((Error) -> Void)?

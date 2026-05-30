@@ -119,6 +119,16 @@ struct SessionPlanTests {
         }
     }
 
+    @Test func everySessionFirstIntervalIsWarmUpAndLastIsCoolDown() {
+        // P3: explicit first/last check across all 27 sessions
+        for session in SessionPlanLibrary.allSessions {
+            #expect(session.intervals.first?.type == .warmUp,
+                    "\(session.id): first interval must be .warmUp")
+            #expect(session.intervals.last?.type == .coolDown,
+                    "\(session.id): last interval must be .coolDown")
+        }
+    }
+
     @Test func sessionLookupReturnsNilForInvalid() {
         #expect(SessionPlanLibrary.session(week: 0,  day: 1) == nil)
         #expect(SessionPlanLibrary.session(week: 10, day: 1) == nil)

@@ -21,6 +21,13 @@ public final class NotificationService: Sendable {
         try await center.requestAuthorization(options: [.alert, .sound, .badge])
     }
 
+    // MARK: - Cancel
+
+    /// Cancel all pending run reminders.
+    public func cancelAllReminders() {
+        center.removeAllPendingNotificationRequests()
+    }
+
     // MARK: - Scheduling
 
     /// Schedule weekly repeating run reminders for the given weekdays and time.

@@ -48,6 +48,30 @@ struct RouteServiceTests {
         #expect(mockDirections.calculateCallCount == 2, "After cache clear, must call API again")
     }
 
+    @Test func cacheEvictsOldestEntryWhenFull() async throws {
+        let mockDirections = MockDirectionsProvider()
+        let service = RouteService(directionsProvider: mockDirections)
+
+        // Insert 51 unique routes (maxCacheSize = 50)
+        // Each pair of coords is unique to avoid cache hits
+        for i in 0..<51 {
+            let from = CLLocationCoordinate2D(latitude: 35.78 + Double(i) * 0.01, longitude: -78.64)
+            let to   = CLLocationCoordinate2D(latitude: 35.78 + Double(i) * 0.01, longitude: -78.63)
+            _ = try await service.calculateRoute(from: from, to: to)
+        }
+
+        // After 51 inserts, the first entry (i=0) should be evicted.
+        // Route 0: from (35.78, -78.64) to (35.78, -78.63)
+        let firstFrom = CLLocationCoordinate2D(latitude: 35.78, longitude: -78.64)
+        let firstTo   = CLLocationCoordinate2D(latitude: 35.78, longitude: -78.63)
+        let callCountBefore = mockDirections.calculateCallCount
+
+        _ = try await service.calculateRoute(from: firstFrom, to: firstTo)
+
+        #expect(mockDirections.calculateCallCount == callCountBefore + 1,
+                "First entry must have been evicted when cache reached max size (51 inserts)")
+    }
+
     @Test func rateLimitEnforcesMinimumInterval() async throws {
         let mockDirections = MockDirectionsProvider()
         let service = RouteService(directionsProvider: mockDirections)

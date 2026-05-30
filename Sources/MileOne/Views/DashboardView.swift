@@ -7,9 +7,13 @@ import SwiftUI
 public struct DashboardView: View {
 
     @State private var viewModel: DashboardViewModel
+    private var appState: AppState
+    private let dataStore: any DataStoreProviding
 
-    public init(dataStore: any DataStoreProviding) {
+    public init(dataStore: any DataStoreProviding, appState: AppState) {
         _viewModel = State(initialValue: DashboardViewModel(dataStore: dataStore))
+        self.appState = appState
+        self.dataStore = dataStore
     }
 
     public var body: some View {
@@ -37,6 +41,11 @@ public struct DashboardView: View {
                 if viewModel.isLapsed {
                     LapsedUserCard()
                         .padding(.horizontal)
+                }
+
+                // Week advance CTA
+                if viewModel.canAdvanceWeek && !viewModel.hasGraduated {
+                    weekAdvanceCTA
                 }
 
                 // Session preview card
@@ -244,11 +253,40 @@ public struct DashboardView: View {
         return quotes[dayOfYear % quotes.count]
     }
 
+    // MARK: - Week Advance CTA
+
+    private var weekAdvanceCTA: some View {
+        VStack(spacing: 12) {
+            Text("🎉 Week \(viewModel.currentWeek) Complete!")
+                .font(.headline)
+            Text("You've finished all 3 sessions. Ready for Week \(viewModel.currentWeek + 1)?")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button {
+                Task {
+                    try? await dataStore.advanceWeek()
+                    await viewModel.loadData()
+                }
+            } label: {
+                Text("Start Week \(viewModel.currentWeek + 1) →")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
+        .background(Color.green.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal)
+        .accessibilityElement(children: .contain)
+    }
+
     // MARK: - Start Button
 
     private var startButton: some View {
         Button {
-            // TODO: Navigate to RunView
+            appState.activeSession = viewModel.nextSession
+            appState.isShowingRun = true
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "play.fill")

@@ -71,11 +71,48 @@ struct DashboardViewModelTests {
         #expect(vm.isLapsed == false)
     }
 
-    @Test func programCompletionPercentage() {
-        // Week 5, Session 2 complete = (4*3 + 1) / 27 = 13/27 ≈ 48.1%
-        let completedTotal = (5 - 1) * 3 + 1
-        let percentage = Double(completedTotal) / 27.0 * 100.0
-        #expect(percentage > 48 && percentage < 49)
+    @Test func programCompletionPercentage() async throws {
+        // Week 5, Session 2 complete = (4*3 + 2) / 27 = 14/27 ≈ 51.85%
+        // After completing 2 sessions: completedSessionsThisWeek = 2, ring = 2/3
+        let mockStore = MockDataStore()
+        await mockStore.setMockProfile(UserProfileSnapshot(
+            heightCm: 170, weightKg: 70, birthYear: 1990,
+            biologicalSex: .male, currentWeek: 5,
+            completedSessionsThisWeek: 2, hasCompletedOnboarding: true,
+            hasGraduated: false, startingWeek: 1, usesMetric: false,
+            runDays: [2, 4, 6], reminderHour: 7, reminderMinute: 0,
+            remindersEnabled: true
+        ))
+        let vm = DashboardViewModel(dataStore: mockStore)
+        await vm.loadData()
+
+        let pct = vm.programCompletionPercentage
+        // (5-1)*3 + Int(2/3 * 3) = 12 + 2 = 14; 14/27 * 100 ≈ 51.85
+        #expect(pct > 51 && pct < 53,
+                "programCompletionPercentage for W5 S2 should be ~51.85%, got \(pct)")
+    }
+
+    @Test func loadDataWhenFetchRunsThrowsSetsEmptyState() async throws {
+        let mockStore = MockDataStore()
+        await mockStore.setMockProfile(UserProfileSnapshot(
+            heightCm: 170, weightKg: 70, birthYear: 1990,
+            biologicalSex: .male, currentWeek: 2,
+            completedSessionsThisWeek: 1, hasCompletedOnboarding: true,
+            hasGraduated: false, startingWeek: 1, usesMetric: false,
+            runDays: [2, 4, 6], reminderHour: 7, reminderMinute: 0,
+            remindersEnabled: true
+        ))
+        await mockStore.setShouldThrowOnFetchRuns(true)
+
+        let vm = DashboardViewModel(dataStore: mockStore)
+        await vm.loadData()
+
+        // When fetchCompletedRuns throws, loadData uses ?? [] fallback:
+        // lifetimeStats and isFirstRun still get computed from empty array
+        #expect(vm.lifetimeStats.totalRuns == 0,
+                "When fetchCompletedRuns throws, lifetime stats should be zero")
+        #expect(vm.isFirstRun == true,
+                "When fetchCompletedRuns throws, isFirstRun should default to true")
     }
 
     @Test func graduationDetectedAtWeek9Session3() async throws {
