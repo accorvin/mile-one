@@ -123,10 +123,11 @@ public final class RunEngine {
     // MARK: - Public Actions
 
     /// Start the run. Configures audio, starts GPS, begins timers, speaks the opening cue.
+    /// Audio session configuration failure is non-fatal — the run proceeds without audio.
     public func start() throws {
         guard !isRunning, !isComplete else { return }
 
-        try audioCoach.configureAudioSession()
+        try? audioCoach.configureAudioSession()
 
         let now = timeProvider.now()
         runStartTime = now
