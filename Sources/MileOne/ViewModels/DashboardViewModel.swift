@@ -34,6 +34,9 @@ public final class DashboardViewModel {
     /// True when the user has completed the full 9-week program.
     public private(set) var hasGraduated: Bool = false
 
+    /// True when the user has graduated and should see the free run option.
+    public private(set) var showFreeRunOption: Bool = false
+
     // MARK: - Init
 
     public init(dataStore: any DataStoreProviding) {
@@ -51,6 +54,7 @@ public final class DashboardViewModel {
         completionRingProgress = Double(completed) / 3.0
         canAdvanceWeek = completed >= 3
         hasGraduated = profile.hasGraduated
+        showFreeRunOption = profile.hasGraduated
     }
 
     /// Checks whether the user is lapsed (no run in > 7 days) and updates `isLapsed`.
