@@ -4,39 +4,41 @@ import Foundation
 
 public enum DateHelpers {
 
-    private nonisolated(unsafe) static let shortDateFormatter: DateFormatter = {
+    private static func makeShortDateFormatter() -> DateFormatter {
         let f = DateFormatter()
         f.dateStyle = .medium
         f.timeStyle = .none
         return f
-    }()
+    }
 
-    private nonisolated(unsafe) static let shortTimeFormatter: DateFormatter = {
+    private static func makeShortTimeFormatter() -> DateFormatter {
         let f = DateFormatter()
         f.dateStyle = .none
         f.timeStyle = .short
         return f
-    }()
+    }
 
-    private nonisolated(unsafe) static let relativeDateFormatter: RelativeDateTimeFormatter = {
+    /// Format a date relative to now, creating a fresh formatter each call.
+    /// RelativeDateTimeFormatter is not Sendable, so we avoid storing it as a static.
+    private static func makeRelativeDateFormatter() -> RelativeDateTimeFormatter {
         let f = RelativeDateTimeFormatter()
         f.unitsStyle = .full
         return f
-    }()
+    }
 
     /// Format a date as a short date string, e.g. "May 29, 2026".
     public static func shortDate(_ date: Date) -> String {
-        shortDateFormatter.string(from: date)
+        makeShortDateFormatter().string(from: date)
     }
 
     /// Format a date as a short time string, e.g. "7:00 AM".
     public static func shortTime(_ date: Date) -> String {
-        shortTimeFormatter.string(from: date)
+        makeShortTimeFormatter().string(from: date)
     }
 
     /// Format a date relative to now, e.g. "2 days ago".
     public static func relative(_ date: Date) -> String {
-        relativeDateFormatter.localizedString(for: date, relativeTo: Date())
+        makeRelativeDateFormatter().localizedString(for: date, relativeTo: Date())
     }
 
     /// Format a duration in seconds as "H:MM:SS" or "M:SS" if under an hour.

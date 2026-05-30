@@ -81,9 +81,9 @@ public final class RunEngine {
     private var lastAcceptedLocation: CLLocation?
 
     /// Display refresh timer (0.5s interval).
-    nonisolated private var displayTimer: DispatchSourceTimer?
+    private var displayTimer: DispatchSourceTimer?
     /// Checkpoint persistence timer (60s interval).
-    nonisolated private var checkpointTimer: DispatchSourceTimer?
+    private var checkpointTimer: DispatchSourceTimer?
 
     // MARK: - Init
 
@@ -107,10 +107,12 @@ public final class RunEngine {
     }
 
     deinit {
-        // Cancel timers directly — deinit is nonisolated so we can't call
-        // @MainActor methods. DispatchSourceTimer.cancel() is thread-safe.
-        displayTimer?.cancel()
-        checkpointTimer?.cancel()
+        // @MainActor class deinit runs on the main actor in practice.
+        // Use assumeIsolated to satisfy Swift 6.2 strict concurrency.
+        MainActor.assumeIsolated {
+            displayTimer?.cancel()
+            checkpointTimer?.cancel()
+        }
     }
 
     // MARK: - Public Actions
@@ -127,8 +129,11 @@ public final class RunEngine {
         isRunning = true
 
         // Wire up GPS callbacks.
+        // CLLocationManagerDelegate fires on the main thread, and RunEngine is @MainActor,
+        // so we use MainActor.assumeIsolated to call synchronously (avoids Task hop that
+        // breaks synchronous test assertions).
         locationProvider.onLocationUpdate = { [weak self] location in
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 self?.handleLocationUpdate(location)
             }
         }
