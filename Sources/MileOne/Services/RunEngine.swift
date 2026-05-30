@@ -220,10 +220,11 @@ public final class RunEngine {
         let now = timeProvider.now()
         updateElapsedTime(at: now)
 
-        // If GPS has been dead for >3s, use wall-clock fallback that CAN advance intervals.
-        if let lastGPS = lastGPSTimestamp, now.timeIntervalSince(lastGPS) > 3 {
-            refreshDisplayWithTimestamp(now)
-        }
+        // Always check interval completion via wall clock. GPS-driven advancement is
+        // more accurate but the display timer must also be able to advance intervals —
+        // otherwise intervals stall when GPS is absent, denied, or returning only
+        // rejected (inaccurate) points.
+        checkIntervalCompletion()
 
         publishSnapshot()
     }
@@ -245,7 +246,6 @@ public final class RunEngine {
         guard isRunning, !isPaused, !isComplete else { return }
 
         let now = location.timestamp
-        lastGPSTimestamp = now
 
         // GPS accuracy filtering: accept all during grace period, reject poor accuracy after.
         let timeSinceStart = runStartTime.map { now.timeIntervalSince($0) } ?? 0
@@ -254,6 +254,10 @@ public final class RunEngine {
         if !inGracePeriod && location.horizontalAccuracy > Constants.gpsAccuracyThreshold {
             return // Reject inaccurate point outside grace period.
         }
+
+        // Only mark GPS as alive for accepted points. Rejected points must not
+        // suppress the wall-clock fallback in refreshDisplay().
+        lastGPSTimestamp = now
 
         // Accumulate distance.
         if let lastLocation = lastAcceptedLocation {

@@ -87,7 +87,10 @@ struct RunEngineTests {
         #expect(audio.spokenTexts.contains("Time to run!"))
     }
 
-    @Test func displayTimerDoesNotAdvanceIntervals() throws {
+    @Test func displayTimerAdvancesIntervalsWithoutGPS() throws {
+        // Regression test: display timer MUST advance intervals even when GPS is absent,
+        // denied, or returning only rejected points. This was the root cause of the
+        // warm-up-never-ends bug.
         let session = makeSession(intervals: [
             Interval(type: .warmUp, durationSeconds: 10),
             Interval(type: .run, durationSeconds: 10)
@@ -99,16 +102,12 @@ struct RunEngineTests {
         let (engine, _, _, _) = makeEngine(session: session, timeProvider: time)
         try engine.start()
 
-        // Advance time past the interval but only call refreshDisplay (no GPS).
-        // Since there's no lastGPSTimestamp, the >3s check won't trigger fallback
-        // on the first call. We need to set up a GPS timestamp first.
+        // Advance wall clock past the warm-up interval with no GPS updates at all.
         time.currentTime = baseDate.addingTimeInterval(15)
-
-        // refreshDisplay should NOT advance intervals (no GPS timestamp set = no fallback either
-        // since lastGPSTimestamp is nil, the condition `now.timeIntervalSince(lastGPS) > 3` won't fire).
         engine.refreshDisplay()
 
-        #expect(engine.currentIntervalIndex == 0)
+        // Display timer must have advanced to the run interval.
+        #expect(engine.currentIntervalIndex == 1)
     }
 
     @Test func pauseAndResumeWork() throws {
