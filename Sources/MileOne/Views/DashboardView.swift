@@ -3,7 +3,7 @@ import SwiftUI
 
 // MARK: - DashboardView
 
-/// Main dashboard showing weekly progress and the next run CTA.
+/// Main dashboard showing the next run CTA with a no-scroll, full-screen layout.
 public struct DashboardView: View {
 
     @State private var viewModel: DashboardViewModel
@@ -11,11 +11,19 @@ public struct DashboardView: View {
     private let dataStore: any DataStoreProviding
     @State private var showSettings = false
     @State private var showRoutePlanner = false
+    /// When non-nil, the UI previews this session instead of `viewModel.nextSession`.
+    /// The Start Run button always uses `viewModel.nextSession`.
+    @State private var previewSession: SessionDefinition? = nil
 
     public init(dataStore: any DataStoreProviding, appState: AppState) {
         _viewModel = State(initialValue: DashboardViewModel(dataStore: dataStore))
         self.appState = appState
         self.dataStore = dataStore
+    }
+
+    /// The session shown in the header and interval strip (preview or actual next session).
+    private var displaySession: SessionDefinition? {
+        previewSession ?? viewModel.nextSession
     }
 
     public var body: some View {
@@ -31,42 +39,39 @@ public struct DashboardView: View {
     // MARK: - Program Body (active training)
 
     private var programBody: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                // Welcome header
-                welcomeHeader
+        GeometryReader { geo in
+            VStack(spacing: 0) {
+                // 1. Gradient hero header
+                heroHeader
 
-                // Program journey bar
-                journeyBar
+                // 2. Interval strip (full width, proportional tiles)
+                if let session = displaySession {
+                    intervalStrip(session: session, totalWidth: geo.size.width)
+                }
 
-                // Lapsed user card
-                if viewModel.isLapsed {
-                    LapsedUserCard()
+                Spacer(minLength: 8)
+
+                // 3. Week advance banner (above start button)
+                if viewModel.canAdvanceWeek {
+                    weekAdvanceBanner
                         .padding(.horizontal)
+                        .padding(.bottom, 8)
                 }
 
-                // Week advance CTA
-                if viewModel.canAdvanceWeek && !viewModel.hasGraduated {
-                    weekAdvanceCTA
-                }
-
-                // Session preview card
-                if let session = viewModel.nextSession {
-                    sessionPreviewCard(session)
-                }
-
-                // Motivational quote
-                motivationQuote
-
-                // Start button
+                // 4. Big centered Start Run button
                 startButton
+                    .padding(.bottom, 12)
 
-                // Stats footer
-                statsFooter
+                // 5. Stats strip
+                statsStrip
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
+
+                // 6. Day selector strip
+                daySelectorStrip
+                    .padding(.bottom, 8)
             }
-            .padding(.bottom, 16)
         }
-        .navigationTitle("Mile One")
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
@@ -97,213 +102,116 @@ public struct DashboardView: View {
         }
     }
 
-    // MARK: - Welcome Header
+    // MARK: - Hero Header
 
-    private var welcomeHeader: some View {
-        VStack(spacing: 4) {
-            if viewModel.isFirstRun {
-                Text("Ready for your first run? 🏃‍♂️")
-                    .font(.title2.bold())
-                if viewModel.startingWeek > 1 {
-                    Text("You're starting at Week \(viewModel.currentWeek) — let's go!")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Your journey to 5K starts now!")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            } else {
-                Text("Week \(viewModel.currentWeek) · Run \(viewModel.nextSessionNumber) of 3")
-                    .font(.title2.bold())
-                Text(weekEncouragement)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.top, 8)
-        .accessibilityElement(children: .combine)
-    }
-
-    private var weekEncouragement: String {
-        switch viewModel.currentWeek {
-        case 1...2: return "Building your foundation 💪"
-        case 3...4: return "You're finding your rhythm!"
-        case 5...6: return "Halfway there — keep pushing!"
-        case 7...8: return "The finish line is in sight 🔥"
-        case 9: return "Final week — you've got this!"
-        default: return "Keep going!"
-        }
-    }
-
-    // MARK: - Journey Bar
-
-    private var journeyBar: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 3) {
-                ForEach(1...Constants.totalWeeks, id: \.self) { week in
-                    journeySegment(week: week)
-                }
-            }
-            .padding(.horizontal)
-
-            HStack {
-                Text("Week 1")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text("Week \(viewModel.currentWeek)")
-                    .font(.caption2.bold())
-                    .foregroundStyle(Color.accentColor)
-                Spacer()
-                Text("5K! 🎉")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Program progress: Week \(viewModel.currentWeek) of \(Constants.totalWeeks)")
-    }
-
-    private func journeySegment(week: Int) -> some View {
-        RoundedRectangle(cornerRadius: 3)
-            .fill(weekColor(week))
-            .frame(height: 6)
-            .overlay {
-                if week == viewModel.currentWeek {
-                    Circle()
-                        .fill(Color.accentColor)
-                        .frame(width: 10, height: 10)
-                }
-            }
-    }
-
-    private func weekColor(_ week: Int) -> Color {
-        if week < viewModel.currentWeek {
-            return Color.accentColor
-        } else if week == viewModel.currentWeek {
-            return Color.accentColor.opacity(0.4)
-        } else {
-            return .secondary.opacity(0.2)
-        }
-    }
-
-    // MARK: - Session Preview Card
-
-    private func sessionPreviewCard(_ session: SessionDefinition) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("TODAY'S SESSION")
-                        .font(.caption.bold())
-                        .foregroundStyle(.secondary)
-                    Text("Week \(session.week) · Run \(session.dayInWeek) of 3")
-                        .font(.headline)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 2) {
-                    Image(systemName: "clock")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Text(formatDuration(session.totalDurationSeconds))
-                        .font(.subheadline.bold())
-                }
-            }
-
-            Divider()
-
-            // Visual timeline bar
-            HStack(spacing: 2) {
-                ForEach(session.intervals) { interval in
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(intervalColor(interval.type))
-                        .frame(height: 24)
-                        .frame(maxWidth: CGFloat(interval.durationSeconds) / CGFloat(session.totalDurationSeconds) * 300)
-                }
-            }
-            .accessibilityLabel("Session timeline showing walk and run intervals")
-
-            // Legend
-            HStack(spacing: 16) {
-                Label("Walk", systemImage: "figure.walk")
-                    .font(.caption)
-                    .foregroundStyle(.green)
-                Label("Run", systemImage: "figure.run")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-            }
-
-            Divider()
-
-            // Interval breakdown
+    private var heroHeader: some View {
+        let session = displaySession
+        let week = session?.week ?? viewModel.currentWeek
+        let day = session?.dayInWeek ?? viewModel.nextSessionNumber
+        let totalMinutes = (session?.totalDurationSeconds ?? 0) / 60
+        return ZStack(alignment: .bottomLeading) {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.05, green: 0.15, blue: 0.45),
+                    Color(red: 0.0, green: 0.55, blue: 0.55)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
             VStack(alignment: .leading, spacing: 6) {
-                ForEach(session.intervals) { interval in
-                    HStack(spacing: 8) {
-                        Text(intervalEmoji(interval.type))
-                            .frame(width: 24)
-                        Text(intervalLabel(interval))
-                            .font(.subheadline)
-                    }
+                Text("WEEK \(week) · DAY \(day)")
+                    .font(.caption.smallCaps())
+                    .foregroundStyle(.white.opacity(0.8))
+                    .kerning(1.5)
+                Text("/ \(totalMinutes) Min")
+                    .font(.title.bold())
+                    .foregroundStyle(.white)
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
+        }
+        .frame(height: 120)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Week \(week), Day \(day), \(totalMinutes) minutes total")
+    }
+
+    // MARK: - Interval Strip
+
+    private func intervalStrip(session: SessionDefinition, totalWidth: CGFloat) -> some View {
+        let gapTotal = CGFloat(max(session.intervals.count - 1, 0)) * 2
+        let availableWidth = totalWidth - gapTotal
+        return HStack(spacing: 2) {
+            ForEach(session.intervals) { interval in
+                let fraction = CGFloat(interval.durationSeconds) / CGFloat(session.totalDurationSeconds)
+                let tileWidth = max(availableWidth * fraction, 8)
+                ZStack {
+                    Rectangle()
+                        .fill(intervalColor(interval.type))
+                    Text(intervalTileLabel(interval))
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.6)
+                        .padding(2)
                 }
+                .frame(width: tileWidth, height: 56)
             }
         }
-        .padding()
-        .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 16))
-        .padding(.horizontal)
-        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Interval breakdown for this session")
     }
 
-    // MARK: - Motivation
-
-    private var motivationQuote: some View {
-        Text(dailyQuote)
-            .font(.footnote.italic())
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-            .padding(.horizontal, 40)
+    private func intervalTileLabel(_ interval: Interval) -> String {
+        let secs = interval.durationSeconds
+        let timeStr: String
+        if secs >= 60 && secs % 60 == 0 {
+            timeStr = "\(secs / 60) Min"
+        } else if secs < 60 {
+            timeStr = "\(secs)s"
+        } else {
+            let m = secs / 60
+            let s = secs % 60
+            timeStr = "\(m):\(String(format: "%02d", s))"
+        }
+        switch interval.type {
+        case .warmUp:  return "\(timeStr)\nWarm Up"
+        case .coolDown: return "\(timeStr)\nCool Down"
+        case .walk:    return "\(timeStr)\nWalk"
+        case .run:     return "\(timeStr)\nRun"
+        }
     }
 
-    private var dailyQuote: String {
-        let quotes = [
-            "\"The miracle isn't that I finished. The miracle is that I had the courage to start.\"",
-            "\"Every mile is two thousand steps. Every run starts with one.\"",
-            "\"You don't have to be great to start, but you have to start to be great.\"",
-            "\"Run when you can, walk if you have to, crawl if you must; just never give up.\"",
-            "\"The hardest step is the one out the door.\"",
-            "\"Your body can stand almost anything. It's your mind you have to convince.\"",
-            "\"A year from now you'll wish you started today.\"",
-        ]
-        let dayOfYear = Calendar.current.ordinality(of: .day, in: .year, for: Date()) ?? 0
-        return quotes[dayOfYear % quotes.count]
-    }
+    // MARK: - Week Advance Banner
 
-    // MARK: - Week Advance CTA
-
-    private var weekAdvanceCTA: some View {
-        VStack(spacing: 12) {
-            Text("🎉 Week \(viewModel.currentWeek) Complete!")
-                .font(.headline)
-            Text("You've finished all 3 sessions. Ready for Week \(viewModel.currentWeek + 1)?")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+    private var weekAdvanceBanner: some View {
+        HStack(spacing: 12) {
+            Text("🎉")
+                .font(.title2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Week \(viewModel.currentWeek) Complete!")
+                    .font(.subheadline.bold())
+                Text("Ready for Week \(viewModel.currentWeek + 1)?")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
             Button {
                 Task {
                     try? await dataStore.advanceWeek()
                     await viewModel.loadData()
+                    previewSession = nil
                 }
             } label: {
-                Text("Start Week \(viewModel.currentWeek + 1) →")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
+                Text("Advance")
+                    .font(.caption.bold())
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Color.green, in: Capsule())
+                    .foregroundStyle(.white)
             }
-            .buttonStyle(.borderedProminent)
         }
-        .padding()
-        .background(Color.green.opacity(0.12), in: RoundedRectangle(cornerRadius: 16))
-        .padding(.horizontal)
+        .padding(12)
+        .background(Color.green.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
         .accessibilityElement(children: .contain)
     }
 
@@ -316,11 +224,12 @@ public struct DashboardView: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "play.fill")
-                Text(viewModel.isFirstRun ? "Start Your First Run" : "Start Next Run")
+                Text(viewModel.isFirstRun ? "Start Your First Run" : "Start Run")
                     .fontWeight(.semibold)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .padding(.vertical, 18)
+            .font(.title3.bold())
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
@@ -330,32 +239,83 @@ public struct DashboardView: View {
             : "Start run \(viewModel.nextSessionNumber) of week \(viewModel.currentWeek)")
     }
 
-    // MARK: - Stats Footer
+    // MARK: - Stats Strip
 
-    private var statsFooter: some View {
+    private var statsStrip: some View {
         HStack(spacing: 0) {
             StatSummaryTile(
                 icon: "figure.run",
                 value: "\(viewModel.lifetimeStats.totalRuns)",
                 label: "Runs"
             )
-            Divider().frame(height: 40)
+            Divider().frame(height: 36)
             StatSummaryTile(
                 icon: "map",
                 value: formattedDistance,
                 label: "Distance"
             )
-            Divider().frame(height: 40)
+            Divider().frame(height: 36)
             StatSummaryTile(
                 icon: "flame",
                 value: "\(Int(viewModel.lifetimeStats.totalCalories))",
                 label: "Calories"
             )
         }
-        .padding(.vertical, 14)
+        .padding(.vertical, 10)
         .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12))
-        .padding(.horizontal)
     }
+
+    // MARK: - Day Selector Strip
+
+    private var daySelectorStrip: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(SessionPlanLibrary.allSessions) { session in
+                        daySelectorChip(session: session)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+            }
+            .onAppear {
+                if let nextSession = viewModel.nextSession {
+                    proxy.scrollTo(nextSession.id, anchor: .center)
+                }
+            }
+        }
+    }
+
+    private func daySelectorChip(session: SessionDefinition) -> some View {
+        let isNext = session.week == viewModel.currentWeek
+            && session.dayInWeek == viewModel.nextSessionNumber
+        let isActive: Bool = {
+            if let ps = previewSession {
+                return ps.id == session.id
+            }
+            return isNext
+        }()
+
+        return Button {
+            if isNext {
+                previewSession = nil
+            } else {
+                previewSession = session
+            }
+        } label: {
+            Text("W\(session.week)D\(session.dayInWeek)")
+                .font(.caption.bold())
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(isActive ? Color.accentColor : Color(.systemGray5), in: Capsule())
+                .foregroundStyle(isActive ? Color.white : Color.primary)
+        }
+        .buttonStyle(.plain)
+        .id(session.id)
+        .accessibilityLabel("Week \(session.week) Day \(session.dayInWeek)\(isNext ? ", next session" : "")")
+    }
+
+    // MARK: - Helpers
 
     private var formattedDistance: String {
         let meters = viewModel.lifetimeStats.totalDistance
@@ -366,43 +326,10 @@ public struct DashboardView: View {
         }
     }
 
-    // MARK: - Interval Helpers
-
     private func intervalColor(_ type: IntervalType) -> Color {
         switch type {
         case .warmUp, .walk, .coolDown: return .green
         case .run: return .orange
-        }
-    }
-
-    private func intervalEmoji(_ type: IntervalType) -> String {
-        switch type {
-        case .warmUp, .walk, .coolDown: return "🚶"
-        case .run: return "🏃"
-        }
-    }
-
-    private func intervalLabel(_ interval: Interval) -> String {
-        let seconds = interval.durationSeconds
-        let prefix: String
-        switch interval.type {
-        case .warmUp: prefix = "Warm-up walk"
-        case .coolDown: prefix = "Cool-down walk"
-        case .walk: prefix = "Walk"
-        case .run: prefix = "Run"
-        }
-        return "\(prefix) \(formatDuration(seconds))"
-    }
-
-    private func formatDuration(_ seconds: Int) -> String {
-        if seconds >= 60 && seconds % 60 == 0 {
-            return "\(seconds / 60) min"
-        } else if seconds < 60 {
-            return "\(seconds)s"
-        } else {
-            let min = seconds / 60
-            let sec = seconds % 60
-            return "\(min):\(String(format: "%02d", sec))"
         }
     }
 
@@ -411,7 +338,6 @@ public struct DashboardView: View {
     private var graduatedBody: some View {
         VStack(spacing: 32) {
             Spacer()
-
             VStack(spacing: 12) {
                 Text("🎉")
                     .font(.system(size: 64))
@@ -422,8 +348,6 @@ public struct DashboardView: View {
                     .font(.title3)
                     .foregroundStyle(.secondary)
             }
-
-            // Lifetime stats summary
             HStack(spacing: 24) {
                 StatSummaryTile(
                     icon: "figure.run",
@@ -444,9 +368,7 @@ public struct DashboardView: View {
             .padding()
             .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 16))
             .padding(.horizontal)
-
             Spacer()
-
             if viewModel.showFreeRunOption {
                 Button("Start a Run") {}
                     .buttonStyle(.borderedProminent)
@@ -456,7 +378,6 @@ public struct DashboardView: View {
             }
         }
         .padding(.vertical, 32)
-        .navigationTitle("Mile One")
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
@@ -484,23 +405,6 @@ public struct DashboardView: View {
         .task {
             await viewModel.loadData()
         }
-    }
-}
-
-// MARK: - LapsedUserCard
-
-struct LapsedUserCard: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Welcome back! 👋")
-                .font(.headline)
-            Text("It's been a while. Ready to get back on track?")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .padding()
-        .background(Color.orange.opacity(0.15), in: RoundedRectangle(cornerRadius: 12))
-        .accessibilityElement(children: .combine)
     }
 }
 
