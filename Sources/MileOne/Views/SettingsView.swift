@@ -9,6 +9,7 @@ public struct SettingsView: View {
 
     @State private var viewModel: SettingsViewModel
     @State private var showResetAlert: Bool = false
+    @Environment(\.dismiss) private var dismiss
 
     public init(viewModel: SettingsViewModel) {
         self._viewModel = State(initialValue: viewModel)
@@ -25,6 +26,12 @@ public struct SettingsView: View {
                 aboutSection
             }
             .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
             .task {
                 await viewModel.loadSettings()
             }

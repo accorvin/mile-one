@@ -8,6 +8,7 @@ import MapKit
 /// Supports road-snap and free-draw modes.
 public struct RoutePlannerView: View {
 
+    @Environment(\.dismiss) private var dismiss
     @State private var viewModel: RoutePlannerViewModel
     @State private var drawMode: DrawMode = .roadSnap
     @State private var showSaveSheet = false
@@ -30,7 +31,12 @@ public struct RoutePlannerView: View {
             }
             .navigationTitle("Route Planner")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { toolbarContent }
+            .toolbar {
+                toolbarContent
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
             .sheet(isPresented: $showSaveSheet) { saveSheet }
         }
     }
