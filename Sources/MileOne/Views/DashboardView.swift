@@ -9,6 +9,8 @@ public struct DashboardView: View {
     @State private var viewModel: DashboardViewModel
     private var appState: AppState
     private let dataStore: any DataStoreProviding
+    @State private var showSettings = false
+    @State private var showRoutePlanner = false
 
     public init(dataStore: any DataStoreProviding, appState: AppState) {
         _viewModel = State(initialValue: DashboardViewModel(dataStore: dataStore))
@@ -65,6 +67,30 @@ public struct DashboardView: View {
             .padding(.bottom, 16)
         }
         .navigationTitle("Mile One")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    showRoutePlanner = true
+                } label: {
+                    Image(systemName: "map")
+                }
+                .accessibilityLabel("Route Planner")
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel("Settings")
+            }
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView(viewModel: SettingsViewModel(dataStore: dataStore))
+        }
+        .sheet(isPresented: $showRoutePlanner) {
+            RoutePlannerView(routeService: RouteService(), dataStore: dataStore)
+        }
         .task {
             await viewModel.loadData()
             await viewModel.checkLapsedState()
@@ -431,6 +457,30 @@ public struct DashboardView: View {
         }
         .padding(.vertical, 32)
         .navigationTitle("Mile One")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    showRoutePlanner = true
+                } label: {
+                    Image(systemName: "map")
+                }
+                .accessibilityLabel("Route Planner")
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel("Settings")
+            }
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView(viewModel: SettingsViewModel(dataStore: dataStore))
+        }
+        .sheet(isPresented: $showRoutePlanner) {
+            RoutePlannerView(routeService: RouteService(), dataStore: dataStore)
+        }
         .task {
             await viewModel.loadData()
         }
